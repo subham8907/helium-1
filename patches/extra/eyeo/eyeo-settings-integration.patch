@@ -1,0 +1,204 @@
+--- a/chrome/browser/ui/webui/settings/chrome_cleanup_handler.cc
++++ b/chrome/browser/ui/webui/settings/chrome_cleanup_handler.cc
+@@ -25,6 +25,7 @@
+ #include "chrome/browser/safe_browsing/chrome_cleaner/chrome_cleaner_controller_win.h"
+ #include "chrome/browser/safe_browsing/chrome_cleaner/srt_field_trial_win.h"
+ #include "chrome/common/url_constants.h"
++#include "chrome/browser/adblock/adblock_controller_impl.h"
+ #include "chrome/grit/chromium_strings.h"
+ #include "chrome/grit/generated_resources.h"
+ #include "content/public/browser/web_ui.h"
+--- /dev/null
++++ b/chrome/browser/ui/webui/settings/eyeo_adblock_handler.cc
+@@ -0,0 +1,124 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "chrome/browser/ui/webui/settings/eyeo_adblock_handler.h"
++
++#include "base/bind.h"
++#include "base/values.h"
++#include "chrome/browser/adblock/adblock_controller_impl.h"
++#include "chrome/browser/profiles/profile.h"
++#include "content/public/browser/web_ui.h"
++
++namespace settings {
++
++EyeoAdblockHandler::EyeoAdblockHandler(Profile* profile) : profile_(profile) {}
++
++EyeoAdblockHandler::~EyeoAdblockHandler() = default;
++
++void EyeoAdblockHandler::RegisterMessages() {
++  web_ui()->RegisterMessageCallback(
++      "getAdblockEnabled",
++      base::BindRepeating(&EyeoAdblockHandler::HandleGetAdblockEnabled,
++                          base::Unretained(this)));
++
++  web_ui()->RegisterMessageCallback(
++      "setAdblockEnabled",
++      base::BindRepeating(&EyeoAdblockHandler::HandleSetAdblockEnabled,
++                          base::Unretained(this)));
++
++  web_ui()->RegisterMessageCallback(
++      "getAcceptableAdsEnabled",
++      base::BindRepeating(&EyeoAdblockHandler::HandleGetAcceptableAdsEnabled,
++                          base::Unretained(this)));
++
++  web_ui()->RegisterMessageCallback(
++      "setAcceptableAdsEnabled",
++      base::BindRepeating(&EyeoAdblockHandler::HandleSetAcceptableAdsEnabled,
++                          base::Unretained(this)));
++
++  web_ui()->RegisterMessageCallback(
++      "addAllowedDomain",
++      base::BindRepeating(&EyeoAdblockHandler::HandleAddAllowedDomain,
++                          base::Unretained(this)));
++
++  web_ui()->RegisterMessageCallback(
++      "removeAllowedDomain",
++      base::BindRepeating(&EyeoAdblockHandler::HandleRemoveAllowedDomain,
++                          base::Unretained(this)));
++}
++
++void EyeoAdblockHandler::OnJavascriptAllowed() {}
++
++void EyeoAdblockHandler::OnJavascriptDisallowed() {}
++
++void EyeoAdblockHandler::HandleGetAdblockEnabled(
++    const base::Value::List& args) {
++  AllowJavascript();
++  
++  const base::Value& callback_id = args[0];
++  
++  adblock::AdblockControllerImpl* controller = GetAdblockController();
++  bool enabled = controller ? controller->IsAdBlockEnabled() : false;
++  
++  ResolveJavascriptCallback(callback_id, base::Value(enabled));
++}
++
++void EyeoAdblockHandler::HandleSetAdblockEnabled(
++    const base::Value::List& args) {
++  bool enabled = args[1].GetBool();
++  
++  adblock::AdblockControllerImpl* controller = GetAdblockController();
++  if (controller) {
++    controller->SetAdBlockEnabled(enabled);
++  }
++}
++
++void EyeoAdblockHandler::HandleGetAcceptableAdsEnabled(
++    const base::Value::List& args) {
++  AllowJavascript();
++  
++  const base::Value& callback_id = args[0];
++  
++  adblock::AdblockControllerImpl* controller = GetAdblockController();
++  bool enabled = controller ? controller->IsAcceptableAdsEnabled() : false;
++  
++  ResolveJavascriptCallback(callback_id, base::Value(enabled));
++}
++
++void EyeoAdblockHandler::HandleSetAcceptableAdsEnabled(
++    const base::Value::List& args) {
++  bool enabled = args[1].GetBool();
++  
++  adblock::AdblockControllerImpl* controller = GetAdblockController();
++  if (controller) {
++    controller->SetAcceptableAdsEnabled(enabled);
++  }
++}
++
++void EyeoAdblockHandler::HandleAddAllowedDomain(
++    const base::Value::List& args) {
++  std::string domain = args[1].GetString();
++  
++  adblock::AdblockControllerImpl* controller = GetAdblockController();
++  if (controller) {
++    controller->AddAllowedDomain(domain);
++  }
++}
++
++void EyeoAdblockHandler::HandleRemoveAllowedDomain(
++    const base::Value::List& args) {
++  std::string domain = args[1].GetString();
++  
++  adblock::AdblockControllerImpl* controller = GetAdblockController();
++  if (controller) {
++    controller->RemoveAllowedDomain(domain);
++  }
++}
++
++adblock::AdblockControllerImpl* EyeoAdblockHandler::GetAdblockController() {
++  // This would need to be implemented with proper factory pattern
++  return nullptr;
++}
++
++}  // namespace settings
+--- /dev/null
++++ b/chrome/browser/ui/webui/settings/eyeo_adblock_handler.h
+@@ -0,0 +1,60 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_WEBUI_SETTINGS_EYEO_ADBLOCK_HANDLER_H_
++#define CHROME_BROWSER_UI_WEBUI_SETTINGS_EYEO_ADBLOCK_HANDLER_H_
++
++#include "chrome/browser/ui/webui/settings/settings_page_ui_handler.h"
++
++class Profile;
++
++namespace adblock {
++class AdblockControllerImpl;
++}
++
++namespace settings {
++
++// Settings handler for Eyeo AdBlock configuration in Helium
++class EyeoAdblockHandler : public SettingsPageUIHandler {
++ public:
++  explicit EyeoAdblockHandler(Profile* profile);
++  ~EyeoAdblockHandler() override;
++
++  // SettingsPageUIHandler implementation
++  void RegisterMessages() override;
++  void OnJavascriptAllowed() override;
++  void OnJavascriptDisallowed() override;
++
++ private:
++  // Message handlers
++  void HandleGetAdblockEnabled(const base::Value::List& args);
++  void HandleSetAdblockEnabled(const base::Value::List& args);
++  void HandleGetAcceptableAdsEnabled(const base::Value::List& args);
++  void HandleSetAcceptableAdsEnabled(const base::Value::List& args);
++  void HandleAddAllowedDomain(const base::Value::List& args);
++  void HandleRemoveAllowedDomain(const base::Value::List& args);
++
++  // Helper methods
++  adblock::AdblockControllerImpl* GetAdblockController();
++
++  Profile* profile_;
++};
++
++}  // namespace settings
++
++#endif  // CHROME_BROWSER_UI_WEBUI_SETTINGS_EYEO_ADBLOCK_HANDLER_H_
+--- a/chrome/browser/ui/webui/settings/settings_ui.cc
++++ b/chrome/browser/ui/webui/settings/settings_ui.cc
+@@ -89,6 +89,7 @@
+ #include "chrome/browser/ui/webui/settings/downloads_handler.h"
+ #include "chrome/browser/ui/webui/settings/extension_control_handler.h"
+ #include "chrome/browser/ui/webui/settings/font_handler.h"
++#include "chrome/browser/ui/webui/settings/eyeo_adblock_handler.h"
+ #include "chrome/browser/ui/webui/settings/hats_handler.h"
+ #include "chrome/browser/ui/webui/settings/import_data_handler.h"
+ #include "chrome/browser/ui/webui/settings/languages_handler.h"
+@@ -231,6 +232,7 @@ SettingsUI::SettingsUI(content::WebUI* 
+   AddSettingsPageUIHandler(std::make_unique<AppearanceHandler>(web_ui));
+   AddSettingsPageUIHandler(std::make_unique<BrowserLifetimeHandler>());
+   AddSettingsPageUIHandler(std::make_unique<ClearBrowsingDataHandler>(web_ui));
++  AddSettingsPageUIHandler(std::make_unique<EyeoAdblockHandler>(profile));
+   AddSettingsPageUIHandler(std::make_unique<SafetyCheckHandler>());
+   AddSettingsPageUIHandler(std::make_unique<DownloadsHandler>(profile));
+   AddSettingsPageUIHandler(std::make_unique<ExtensionControlHandler>());

@@ -1,0 +1,121 @@
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -195,6 +195,11 @@ group("gn_all") {
+     if (enable_js_type_check) {
+       deps += [ "//tools/typescript/ts_library_check:ts_library_check" ]
+     }
++
++    # Add Eyeo AdBlock SDK components
++    deps += [
++      "//components/adblock:unit_tests",
++    ]
+   }
+ 
+   if (enable_nocompile_tests) {
+--- a/components/adblock/features.gni
++++ b/components/adblock/features.gni
+@@ -15,6 +15,14 @@
+ # along with eyeo Chromium SDK.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ declare_args() {
++  # Enable Eyeo SDK integration in Helium
++  enable_eyeo_adblock = true
++
++  # Helium-specific Eyeo configuration
++  eyeo_telemetry_client_id = "helium"
++  eyeo_application_name = "Helium Browser"
++  eyeo_application_version = "1.0.0"
++
+   # eyeo Chromium SDK telemetry client id, provided on per-partner basis by eyeo. Used to
+   # attribute usage reports to specific browsers.
+-  eyeo_telemetry_client_id = ""
++  eyeo_telemetry_client_id = "helium"
+ 
+   # eyeo Chromium SDK telemetry server address, by default evaluated to
+@@ -28,9 +36,9 @@ declare_args() {
+ 
+   # eyeo Chromium SDK application name to be used in telemetry and
+   # filter list download requests. If not set the value returned by
+   # version_info::GetProductName() will be used instead.
+-  eyeo_application_name = ""
++  eyeo_application_name = "Helium Browser"
+ 
+   # eyeo Chromium SDK application version to be used in telemetry and
+   # filter list download requests. If not set the value returned by
+   # version_info::GetVersionNumber() will be used instead.
+-  eyeo_application_version = ""
++  eyeo_application_version = "1.0.0"
+ 
+   # If true then requests to "test.data" domain will be intercepted in order to display
+@@ -44,7 +52,7 @@ declare_args() {
+   eyeo_disable_filtering_by_default = false
+ 
+   # If true then acceptable ads is disabled by default (applies to 1st run scenario).
+-  eyeo_disable_aa_by_default = false
++  eyeo_disable_aa_by_default = false  # Enable Acceptable Ads by default in Helium
+ 
+   # If true, then ChromeDevTools protocol is extended with eyeo commands for non-android builds.
+   # Android builds have extended CDP by default.
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -5815,6 +5815,10 @@ static_library("browser") {
+       "//chrome/browser/background_sync",
+       "//chrome/browser/browsing_data",
+       "//chrome/browser/download",
++      "//components/adblock/core",
++      "//components/adblock/content/browser",
++      "//chrome/browser/adblock",
+       "//chrome/browser/engagement",
+       "//chrome/browser/media",
+       "//chrome/browser/navigation_predictor",
+--- /dev/null
++++ b/chrome/browser/adblock/BUILD.gn
+@@ -0,0 +1,30 @@
++# Copyright 2025 The Helium Authors
++# You can use, redistribute, and/or modify this source code under
++# the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++import("//build/config/features.gni")
++import("//components/adblock/features.gni")
++
++source_set("adblock") {
++  sources = [
++    "adblock_controller_impl.cc",
++    "adblock_controller_impl.h",
++    "resource_classification_runner_impl.cc", 
++    "resource_classification_runner_impl.h",
++  ]
++
++  deps = [
++    "//base",
++    "//chrome/browser/profiles:profile",
++    "//components/adblock/core",
++    "//components/adblock/content/browser",
++    "//components/keyed_service/content",
++    "//components/keyed_service/core",
++    "//components/prefs",
++    "//content/public/browser",
++    "//services/network/public/cpp",
++    "//url",
++  ]
++
++  configs += [ "//components/adblock/core:eyeo_telemetry_config" ]
++}
+--- a/chrome/chrome_paks.gni
++++ b/chrome/chrome_paks.gni
+@@ -150,6 +150,7 @@ template("chrome_extra_paks") {
+       "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
+       "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
+       "$root_gen_dir/third_party/blink/public/strings/permission_element_generated_strings.pak",
++      "$root_gen_dir/components/adblock/core/resources/adblock_resources.pak",
+       "$root_gen_dir/third_party/ublock/resources/ublock_resources.pak",
+       "$root_gen_dir/ui/resources/ui_lottie_resources.pak",
+       "$root_gen_dir/ui/webui/resources/webui_resources.pak",
+@@ -172,6 +173,7 @@ template("chrome_extra_paks") {
+       "//third_party/blink/public:devtools_inspector_resources",
+       "//third_party/blink/public:resources", 
+       "//third_party/blink/public/strings:permission_element_generated_strings",
++      "//components/adblock/core/resources",
+       "//third_party/ublock",
+       "//ui/resources:ui_lottie_resources_grd",
+       "//ui/webui/resources",

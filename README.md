@@ -59,6 +59,7 @@ making it possible to exist in the first place.
 - [Debian](https://tracker.debian.org/pkg/chromium-browser)
 - [Bromite](https://github.com/bromite/bromite)
 - [Iridium Browser](https://iridiumbrowser.de/)
+- [cromite](https://github.com/uazo/cromite)
 
 ## License
 All code, patches, modified portions of imported code or patches, and

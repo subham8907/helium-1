@@ -1,0 +1,21 @@
+--- a/helium/patches/series
++++ b/helium/patches/series
+@@ -164,6 +164,11 @@ helium/core/ublock-setup-sources.patch
+ helium/core/ublock-install-as-component.patch
+ helium/core/ublock-reconfigure-defaults.patch
+ helium/core/ublock-migrate-prefs.patch
++
++# Eyeo AdBlock SDK Integration
++helium/core/eyeo-native-integration.patch
++helium/core/eyeo-setup-sources.patch
++helium/core/eyeo-build-system.patch
+ helium/core/ublock-helium-services.patch
+ helium/core/clean-omnibox-suggestions.patch
+ helium/core/increase-incognito-storage-quota.patch
+@@ -250,4 +255,7 @@ helium/ui/improve-flags-webui.patch
+ helium/ui/ublock-show-in-settings.patch
+ helium/ui/licenses-in-credits.patch
+ helium/ui/remove-autofill-link-to-password-manager.patch
++
++# Eyeo Settings UI
++helium/ui/eyeo-settings-integration.patch

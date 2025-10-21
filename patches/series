@@ -33,7 +33,12 @@ core/ungoogled-chromium/doh-changes.patch
 core/ungoogled-chromium/extensions-manifestv2.patch
 core/ungoogled-chromium/remove-f1-shortcut.patch
 core/bromite/disable-fetching-field-trials.patch
-
+extra/eyeo/eyeo-build-config.patch
+extra/eyeo/eyeo-build-system.patch
+extra/eyeo/eyeo-native-integration.patch
+extra/eyeo/eyeo-series-addition.patch
+extra/eyeo/eyeo-setup-sources.patch
+extra/eyeo/eyeo-settings-integration.patch
 extra/ungoogled-chromium/add-ungoogled-flag-headers.patch
 extra/inox-patchset/0006-modify-default-prefs.patch
 extra/inox-patchset/0013-disable-missing-key-warning.patch
@@ -251,3 +256,4 @@ helium/ui/improve-flags-webui.patch
 helium/ui/ublock-show-in-settings.patch
 helium/ui/licenses-in-credits.patch
 helium/ui/remove-autofill-link-to-password-manager.patch
+

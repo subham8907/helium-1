@@ -1,0 +1,114 @@
+--- a/components/BUILD.gn
++++ b/components/BUILD.gn
+@@ -45,6 +45,7 @@ group("components_unittests_deps") {
+     "//components/webapps",
+     "//components/webauthn",
+     "//components/webcrypto",
++    "//components/adblock:unit_tests",
+   ]
+   
+   if (is_android) {
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -1892,6 +1892,10 @@ jumbo_source_set("browser") {
+     "//components/services/storage/public/cpp",
+     "//components/strings",
+     "//components/tracing",
++    "//components/adblock/core",
++    "//components/adblock/content/browser",
++    "//chrome/browser/adblock",
++    "//components/adblock/core/classifier",
+     "//components/ukm:test_support",
+     "//components/url_formatter",
+     "//components/url_pattern_index",
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -145,6 +145,7 @@
+ #include "chrome/browser/safe_browsing/safe_browsing_service.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
+ #include "chrome/browser/signin/identity_manager_factory.h"
++#include "chrome/browser/adblock/adblock_controller_impl.h"
+ #include "chrome/browser/ssl/stateful_ssl_host_state_delegate_factory.h"
+ #include "chrome/browser/sync/sync_service_factory.h"
+ #include "chrome/browser/themes/theme_service_factory.h"
+@@ -419,6 +420,11 @@ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
+   BrowserList::AddObserver(this);
+   
+   content::URLDataSource::Add(this, std::make_unique<ThemeSource>(this));
++  
++  // Initialize Eyeo AdBlock controller for this profile
++  if (!IsOffTheRecord()) {
++    adblock_controller_ = std::make_unique<adblock::AdblockControllerImpl>(this);
++  }
+ }
+ 
+ base::FilePath ProfileImpl::last_selected_directory() {
+--- a/chrome/browser/profiles/profile_impl.h
++++ b/chrome/browser/profiles/profile_impl.h
+@@ -52,6 +52,10 @@ class PrefChangeRegistrar;
+ class PrefService;
+ }
+ 
++namespace adblock {
++class AdblockControllerImpl;
++}
++
+ // The default profile implementation.
+ class ProfileImpl : public Profile {
+  public:
+@@ -217,6 +221,9 @@ class ProfileImpl : public Profile {
+   // the profile is shutting down.
+   std::unique_ptr<ProfileIOData::Handle> io_data_;
+   
++  // Eyeo AdBlock controller for this profile
++  std::unique_ptr<adblock::AdblockControllerImpl> adblock_controller_;
++
+   // Tracks which BrowserContextKeyedServiceFactory has started being created
+   // but have not finished yet.
+   std::set<BrowserContextKeyedServiceFactory*>
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -198,6 +198,8 @@
+ #include "ui/compositor/compositor.h"
+ #include "url/url_constants.h"
+ 
++#include "chrome/browser/adblock/resource_classification_runner_impl.h"
++
+ #if BUILDFLAG(IS_ANDROID)
+ #include "content/browser/android/gesture_listener_manager.h"
+ #include "content/browser/android/java_interfaces_impl.h"
+@@ -1728,6 +1730,12 @@ void RenderFrameHostImpl::Init() {
+     GetAssociatedLocalFrame()->EnableViewTransitionCallbacks(
+         view_transition_opt_in_state_);
+   }
++  
++  // Initialize Eyeo AdBlock for this frame
++  if (GetParent() == nullptr) { // Main frame only
++    adblock_runner_ = std::make_unique<adblock::ResourceClassificationRunnerImpl>(
++        WebContents::FromRenderFrameHost(this));
++  }
+ }
+ 
+ void RenderFrameHostImpl::PrepareForInnerWebContentsAttach(
+--- a/content/browser/renderer_host/render_frame_host_impl.h
++++ b/content/browser/renderer_host/render_frame_host_impl.h
+@@ -123,6 +123,10 @@ class WebBundleHandle;
+ class WebBundleHandleTracker;
+ }
+ 
++namespace adblock {
++class ResourceClassificationRunnerImpl;
++}
++
+ namespace content {
+ 
+ class AgentSchedulingGroupHost;
+@@ -2126,6 +2130,9 @@ class CONTENT_EXPORT RenderFrameHostImpl
+   // TODO(crbug.com/1365512): Remove once View Transitions support
+   std::optional<blink::ViewTransitionState> view_transition_opt_in_state_;
+   
++  // Eyeo AdBlock runner for this frame
++  std::unique_ptr<adblock::ResourceClassificationRunnerImpl> adblock_runner_;
++
+   base::WeakPtrFactory<RenderFrameHostImpl> weak_ptr_factory_{this};
+ };

@@ -1,0 +1,67 @@
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -195,6 +195,11 @@ group("gn_all") {
+     if (enable_js_type_check) {
+       deps += [ "//tools/typescript/ts_library_check:ts_library_check" ]
+     }
++
++    # Add Eyeo AdBlock SDK components
++    deps += [
++      "//components/adblock:unit_tests",
++    ]
+   }
+ 
+   if (enable_nocompile_tests) {
+--- /dev/null
++++ b/args.gn
+@@ -0,0 +1,10 @@
++# Eyeo SDK Configuration for Helium
++
++# Enable Eyeo AdBlock features
++enable_eyeo_adblock = true
++
++# Eyeo telemetry configuration (set your values)
++eyeo_telemetry_client_id = "helium"
++eyeo_application_name = "Helium Browser"
++eyeo_application_version = "1.0.0"
++eyeo_disable_aa_by_default = false
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -5815,6 +5815,9 @@ static_library("browser") {
+       "//chrome/browser/background_sync",
+       "//chrome/browser/browsing_data",
+       "//chrome/browser/download",
++      "//chrome/browser/adblock:adblock_service",
++      "//components/adblock/core",
++      "//components/adblock/content/browser",
+       "//chrome/browser/engagement",
+       "//chrome/browser/media",
+       "//chrome/browser/navigation_predictor",
+--- /dev/null
++++ b/chrome/browser/adblock/BUILD.gn
+@@ -0,0 +1,25 @@
++# Copyright 2025 The Helium Authors
++# You can use, redistribute, and/or modify this source code under
++# the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++import("//build/config/features.gni")
++
++source_set("adblock_service") {
++  sources = [
++    "adblock_service.cc",
++    "adblock_service.h",
++    "adblock_service_factory.cc",
++    "adblock_service_factory.h",
++  ]
++
++  deps = [
++    "//base",
++    "//chrome/browser/profiles:profile",
++    "//components/adblock/core",
++    "//components/keyed_service/content",
++    "//components/keyed_service/core",
++    "//components/prefs",
++    "//content/public/browser",
++    "//services/network/public/cpp",
++  ]
++}

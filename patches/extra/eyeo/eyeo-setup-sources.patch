@@ -1,0 +1,128 @@
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -602,6 +602,7 @@ source_set("extensions") {
+     "//net:extras",
+     "//services/metrics/public/cpp:ukm_builders",
+     "//storage/browser",
++    "//components/adblock/core",
+     "//third_party/ublock",
+     "//third_party/zlib/google:zip",
+     "//ui/base/accelerators/global_accelerator_listener",
+--- a/chrome/chrome_paks.gni
++++ b/chrome/chrome_paks.gni
+@@ -150,6 +150,7 @@ template("chrome_extra_paks") {
+       "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
+       "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
+       "$root_gen_dir/third_party/blink/public/strings/permission_element_generated_strings.pak",
++      "$root_gen_dir/components/adblock/core/resources/adblock_resources.pak",
+       "$root_gen_dir/third_party/ublock/resources/ublock_resources.pak",
+       "$root_gen_dir/ui/resources/ui_lottie_resources.pak",
+       "$root_gen_dir/ui/webui/resources/webui_resources.pak",
+@@ -172,6 +173,7 @@ template("chrome_extra_paks") {
+       "//third_party/blink/public:devtools_inspector_resources",
+       "//third_party/blink/public:resources",
+       "//third_party/blink/public/strings:permission_element_generated_strings",
++      "//components/adblock/core:resources",
+       "//third_party/ublock",
+       "//ui/resources:ui_lottie_resources_grd",
+       "//ui/webui/resources",
+--- a/chrome/browser/extensions/chrome_component_extension_resource_manager.cc
++++ b/chrome/browser/extensions/chrome_component_extension_resource_manager.cc
+@@ -24,6 +24,7 @@
+ #include "extensions/common/extension_id.h"
+ #include "pdf/buildflags.h"
+ #include "ui/base/resource/resource_bundle.h"
++#include "components/adblock/core/resources/grit/adblock_resources_map.h"
+ #include "third_party/ublock/resources/grit/ublock_resources_map.h"
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+@@ -93,6 +94,7 @@ ChromeComponentExtensionResourceManager:
+ 
+   AddComponentResourceEntries(kComponentExtensionResources);
+   AddComponentResourceEntries(kExtraComponentExtensionResources);
++  AddComponentResourceEntries(kAdblockResources);
+   AddComponentResourceEntries(kUblockResources);
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+--- a/tools/gritsettings/resource_ids.spec
++++ b/tools/gritsettings/resource_ids.spec
+@@ -196,7 +196,11 @@
+     "META": {"sizes": {"includes": [500]}},
+     "includes": [2850],
+   },
+-  "<(SHARED_INTERMEDIATE_DIR)/third_party/ublock/ublock_resources.grd": {
++  "<(SHARED_INTERMEDIATE_DIR)/components/adblock/core/resources/adblock_resources.grd": {
++    "META": {"sizes": {"includes": [800],}},
++    "includes": [2860],
++  },
++  "<(SHARED_INTERMEDIATE_DIR)/third_party/ublock/ublock_resources.grd": {
+     "META": {"sizes": {"includes": [1000],}},
+-    "includes": [2860],
++    "includes": [3660],
+   },
+--- /dev/null
++++ b/chrome/browser/adblock/adblock_service.h
+@@ -0,0 +1,34 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_ADBLOCK_ADBLOCK_SERVICE_H_
++#define CHROME_BROWSER_ADBLOCK_ADBLOCK_SERVICE_H_
++
++#include "components/keyed_service/core/keyed_service.h"
++#include "components/adblock/core/subscription/subscription_service.h"
++
++class Profile;
++
++namespace adblock {
++
++// Service that manages Eyeo AdBlock functionality for a specific profile
++class AdblockService : public KeyedService {
++ public:
++  explicit AdblockService(Profile* profile);
++  ~AdblockService() override;
++
++  // KeyedService implementation
++  void Shutdown() override;
++
++  // Get the subscription service for managing filter lists
++  SubscriptionService* GetSubscriptionService() { return subscription_service_.get(); }
++
++ private:
++  Profile* profile_;
++  std::unique_ptr<SubscriptionService> subscription_service_;
++};
++
++}  // namespace adblock
++
++#endif  // CHROME_BROWSER_ADBLOCK_ADBLOCK_SERVICE_H_
+--- /dev/null
++++ b/chrome/browser/adblock/adblock_service.cc
+@@ -0,0 +1,27 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "chrome/browser/adblock/adblock_service.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/adblock/core/subscription/subscription_service_impl.h"
++
++namespace adblock {
++
++AdblockService::AdblockService(Profile* profile) : profile_(profile) {
++  subscription_service_ = std::make_unique<SubscriptionServiceImpl>(
++      profile->GetPrefs(),
++      profile->GetDefaultStoragePartition()
++          ->GetURLLoaderFactoryForBrowserProcess());
++}
++
++AdblockService::~AdblockService() = default;
++
++void AdblockService::Shutdown() {
++  if (subscription_service_) {
++    subscription_service_.reset();
++  }
++}
++
++}  // namespace adblock
